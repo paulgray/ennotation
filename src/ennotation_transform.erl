@@ -14,7 +14,7 @@
 parse_transform(Tree, _Options) ->
     transform_tree(Tree, [], [], []).
 
--spec(transform_tree/4 :: (transform_tree/4 :: (list(), list(), list(), list()) -> list()).
+-spec(transform_tree/4 :: (list(), list(), list(), list()) -> list()).
 transform_tree([{attribute, _, module, Name} = A | Rest], Tree, [], []) ->
     put(module_name, Name),
     transform_tree(Rest, [A | Tree], [], []);
