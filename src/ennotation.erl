@@ -21,9 +21,11 @@
           module_path :: string() %% path to the module sources
          }).
 
+-spec(parse_transform/2 :: (list(), list()) -> list()).
 parse_transform(Tree, _Options) ->
     transform_tree(Tree, [], none, #state{}).
 
+-spec(transform_tree/4 :: (list(), list(), none | before | 'after', #state{}) -> list()).
 transform_tree([{attribute, _, ennotation_before, _} | Rest], Tree, _, State) ->
     transform_tree(Rest, Tree, before, State);
 transform_tree([{attribute, _, ennotation_after, _} | Rest], Tree, _, State) ->
@@ -44,11 +46,12 @@ transform_tree([], Tree, _, State) ->
                              "..", "include", 
                              atom_to_list(State#state.module_name) ++ 
                                  "_annotations.hrl"]),
+    ok = filelib:ensure_dir(HrlName),
     case file:open(HrlName, [write]) of
 	{ok, Fd} ->
             io:format(Fd, "-compile({parse_transform, e_user_annotation}).~n"
                       "-compile(nowarn_shadow_vars).~n~n", []),
-            save_annotations(Fd, lists:reverse(get(ew_annotations)));
+            save_annotations(Fd, lists:reverse(State#state.annotations));
         {error, Reason} ->
             error_logger:error_msg("Error during annotation header creation: ~p. "
                                    "Reason: ~p~n",
@@ -56,6 +59,7 @@ transform_tree([], Tree, _, State) ->
     end,
     lists:reverse(Tree).
 
+-spec(transform_function/3 :: (tuple(), before | 'after', #state{}) -> #state{}).
 transform_function({function, _, FunName, 4, _}, Type, State) ->
     State#state{annotations = [{Type, State#state.module_name, FunName} | 
                                State#state.annotations]};
@@ -64,6 +68,7 @@ transform_function({function, LineNo, FunName, _, _}, Type, State) ->
                              [State#state.module_name, LineNo, FunName, Type]),
     State.
 
+-spec(save_annotations/2 :: (pid(), list()) -> ok).
 save_annotations(Hrl, [{Type, ModName, FunName} | Rest]) ->
     io:format(Hrl, "-define(~s(Args), -ew_user_annotation({Args, ~p, ~p, ~p})).~n~n",
 	      [generate_define_name(FunName), Type, ModName, FunName]),
