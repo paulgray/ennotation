@@ -49,7 +49,7 @@ transform_tree([], Tree, _, State) ->
     ok = filelib:ensure_dir(HrlName),
     case file:open(HrlName, [write]) of
 	{ok, Fd} ->
-            io:format(Fd, "-compile({parse_transform, e_user_annotation}).~n"
+            io:format(Fd, "-compile({parse_transform, ennotation_transform}).~n"
                       "-compile(nowarn_shadow_vars).~n~n", []),
             save_annotations(Fd, lists:reverse(State#state.annotations));
         {error, Reason} ->
@@ -70,7 +70,7 @@ transform_function({function, LineNo, FunName, _, _}, Type, State) ->
 
 -spec(save_annotations/2 :: (pid(), list()) -> ok).
 save_annotations(Hrl, [{Type, ModName, FunName} | Rest]) ->
-    io:format(Hrl, "-define(~s(Args), -ew_user_annotation({Args, ~p, ~p, ~p})).~n~n",
+    io:format(Hrl, "-define(~s(Args), -user_ennotation({Args, ~p, ~p, ~p})).~n~n",
 	      [generate_define_name(FunName), Type, ModName, FunName]),
     save_annotations(Hrl, Rest);
 save_annotations(Hrl, []) ->
