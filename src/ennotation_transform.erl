@@ -3,6 +3,50 @@
 %%% @copyright (C) 2010, Erlang Solutions Ltd.
 %%% @doc parse_transform module for user-defined annotations.
 %%%
+%%% The idea to achieve this is to transform the functions using the
+%%% following algorithm:
+%%%
+%%% If we have a function called mymod:foobar and want to surround it with
+%%% some 'before' and 'after' calls:
+%%% -BEFORE_LOG(SomeArgs).
+%%% foobar(Foo, Bar) ->
+%%%    "foobar!".
+%%% 
+%%% we will transform it into:
+%%% foobar(Foo, Bar) ->
+%%%    case before_log(SomeArgs, ?MODULE, foobar, [Foo, Bar]) of
+%%%         {ok, Args} ->
+%%%             apply_local('UNIQUE_TAG'_foobar, [Args]);
+%%%         {stop, Result} ->
+%%%             Result
+%%%    end.
+%%%
+%%% 'UNIQUE_TAG'_foobar(Foo, Bar) ->
+%%%    "foobar!".
+%%%
+%%% Note that apply_local/2 would be a standard call to foobar, with
+%%% checks regarding the length of Args list (must be equal to the
+%%% length of the initial arguments list.
+%%%
+%%% Having multiple 'before' annotations would follow the same algorithm
+%%% recursively. If annotation callback function returns {ok, NewArgs}
+%%% the next in line 'before' annotation will be called. In turn, if
+%%% {stop, Result} is returned, next annotation callbacks will not be
+%%% called, nor the actual function and 'after' annotation callbacks.
+%%%
+%%% The other case is having 'after' annotations:
+%%% -AFTER_LOG(SomeArgs).
+%%% foobar(Foo, Bar) ->
+%%%    "foobar!".
+%%%
+%%% we will transform it into:
+%%% foobar(Foo, Bar) ->
+%%%    Result = apply_local('UNIQUE_TAG'_foobar, [Foo, Bar]),
+%%%    after_log(SomeArgs, ?MODULE, foobar, Result).
+%%%
+%%% The chain of 'after' callbacks calls can never be broken, thus all 
+%%% functions will be invoked. 
+%%%
 %%% @end
 %%% Created : 26 Aug 2010 by Michal Ptaszek <michal.ptaszek@erlang-solutions.com>
 %%%-------------------------------------------------------------------
@@ -34,12 +78,15 @@ transform_tree([Element | Rest], Tree, Before, After) ->
 transform_tree([], Tree, _, _) ->
     lists:reverse(Tree).
 
+-spec(transform_function/3 :: (tuple(), list(), list()) -> tuple()).
 transform_function({function, Line, FunName, Arity, Clauses}, Before, After) ->
     put(function_name, FunName),
     put(function_arity, Arity),
+
     NewClauses = transform_clause(Clauses, Before, After, []),
     {function, Line, FunName, Arity, NewClauses}.
 
+-spec(transform_clause/4 :: (list(), list(), list(), list()) -> list()).
 transform_clause([OrgClause | Rest], Before, After, Clauses) ->
     BeforeClause = transform_clause_before(OrgClause, Before),
     AfterClause = transform_clause_after(BeforeClause, After),
@@ -47,6 +94,7 @@ transform_clause([OrgClause | Rest], Before, After, Clauses) ->
 transform_clause([], _, _, Clauses) ->
     lists:reverse(Clauses).
 
+-spec(transform_clause_before :: (tuple(), list()) -> tuple()).
 transform_clause_before(Clause, []) ->
     Clause;
 transform_clause_before({clause, L, CArgs, Guards, Body}, Annotations0) ->
@@ -68,79 +116,79 @@ transform_clause_before({clause, L, CArgs, Guards, Body}, Annotations0) ->
     EFunc = get_unique_atom(),
 
     NewBody = [{match, L,
-		{var, L, AFunName},
-		{'fun', L,
-		 {clauses,
-		  [{clause, L,
-		    [{var, L, FuncArgs},
-		     {cons, L,
-		      {tuple, L,
-		       [{var, L, AArgs}, {var, L, Mod}, {var, L, Func}]},
-		      {var, L, Rest}},
-		     {var, L, Self}],
-		    [],
-		    [{'case', L,
-		      {call, L,
-		       {remote, L, {var, L, Mod}, {var, L, Func}},
-		       [{var, L, AArgs},
-			{atom, L, TgtFunM},
-			{atom, L, TgtFunN},
-			{var, L, FuncArgs}]},
-		      [{clause, L,
-			[{tuple, L, [{atom, L, proceed}, {var, L, NewArgs}]}],
-			[],
-			[{call, L,
-			  {var, L, Self},
-			  [{var, L, NewArgs}, {var, L, Rest}, {var, L, Self}]}]},
-		       {clause, L, 
-			[{tuple, L, [{atom, L, skip}, {var, L, NewArgs}]}],
-			[],
-			[{var, L, NewArgs}]},
-		       {clause, L,
-			[{tuple, L,
-			  [{atom, L, error},
-			   {tuple, L,
-			    [{var, L, EMod},
-			     {var, L, EFunc},
-			     {var, L, NewArgs}]}]}],
-			[],
-			[{call, L, 
-			  {atom, L, apply},
-			  [{var, L, EMod},
-			   {var, L, EFunc},
-			   {var, L, NewArgs}]}]}]}]},
-		   {clause, L, 
-		    [{var, L, FuncArgs}, {nil, L}, {var, L, '_'}],
-		    [],
-		    [{'if', L,
-		      [{clause, L, [],
-			[[{op, L, '=/=',
-			   {call, L, {atom, L, length}, [{var, L, FuncArgs}]},
-			   {integer, L, Arity}}]],
-			[{call, L,
-			  {atom, L, throw},
-			  [{tuple, L,
-			    [{atom, L, bad_annotation_result_length},
-			     {call, L,
-			      {atom, L, length},
-			      [{var, L, FuncArgs}]}]}]}]},
-		       {clause, L, [],
-			[[{atom, L, true}]],
-			[{call, L,
-			  {atom, L, apply},
-			  [{'fun', L,
-			    {clauses, 
-			     [{clause, L,
-			       CArgs,
-			       [],
-			       Body}]}},
-			   {var, L, FuncArgs}]}]}]}]}]}}},
-	       {call, L, 
-		{var, L, AFunName},
-		[prepare_arguments_list(CArgs, L),
-		 Annotations,
-		 {var, L, AFunName}]}],
-    
+                {var, L, AFunName},
+                {'fun', L,
+                 {clauses,
+                  [{clause, L,
+                    [{var, L, FuncArgs},
+                     {cons, L,
+                      {tuple, L,
+                       [{var, L, AArgs}, {var, L, Mod}, {var, L, Func}]},
+                      {var, L, Rest}},
+                     {var, L, Self}],
+                    [],
+                    [{'case', L,
+                      {call, L,
+                       {remote, L, {var, L, Mod}, {var, L, Func}},
+                       [{var, L, AArgs},
+                        {atom, L, TgtFunM},
+                        {atom, L, TgtFunN},
+                        {var, L, FuncArgs}]},
+                      [{clause, L,
+                        [{tuple, L, [{atom, L, proceed}, {var, L, NewArgs}]}],
+                        [],
+                        [{call, L,
+                          {var, L, Self},
+                          [{var, L, NewArgs}, {var, L, Rest}, {var, L, Self}]}]},
+                       {clause, L, 
+                        [{tuple, L, [{atom, L, skip}, {var, L, NewArgs}]}],
+                        [],
+                        [{var, L, NewArgs}]},
+                       {clause, L,
+                        [{tuple, L,
+                          [{atom, L, error},
+                           {tuple, L,
+                            [{var, L, EMod},
+                             {var, L, EFunc},
+                             {var, L, NewArgs}]}]}],
+                        [],
+                        [{call, L, 
+                          {atom, L, apply},
+                          [{var, L, EMod},
+                           {var, L, EFunc},
+                           {var, L, NewArgs}]}]}]}]},
+                   {clause, L, 
+                    [{var, L, FuncArgs}, {nil, L}, {var, L, '_'}],
+                    [],
+                    [{'if', L,
+                      [{clause, L, [],
+                        [[{op, L, '=/=',
+                           {call, L, {atom, L, length}, [{var, L, FuncArgs}]},
+                           {integer, L, Arity}}]],
+                        [{call, L,
+                          {atom, L, throw},
+                          [{tuple, L,
+                            [{atom, L, bad_annotation_result_length},
+                             {call, L,
+                              {atom, L, length},
+                              [{var, L, FuncArgs}]}]}]}]},
+                       {clause, L, [],
+                        [[{atom, L, true}]],
+                        [{call, L,
+                          {atom, L, apply},
+                          [{'fun', L,
+                            {clauses, 
+                             [{clause, L,
+                               CArgs,
+                               [],
+                               Body}]}},
+                           {var, L, FuncArgs}]}]}]}]}]}}},
+               {call, L, 
+                {var, L, AFunName},
+                [prepare_arguments_list(CArgs, L),
+                 Annotations,
+                 {var, L, AFunName}]}],
+
     {clause, L, CArgs, Guards, NewBody}.
 
 transform_clause_after(Clause, []) ->
@@ -164,64 +212,64 @@ transform_clause_after({clause, L, CArgs, Guards, Body}, Annotations0) ->
     EFunc = get_unique_atom(),
 
     NewBody = [{match, L,
-		{var, L, OrgFunName},
-		{'fun', L, 
-		 {clauses,
-		  [{clause, L, [], [],
-		    Body}]}}},
-	       {match, L, 
-		{var, L, AFunName},
-		{'fun', L,
-		 {clauses,
-		  [{clause, L,
-		    [{var, L, FuncResult},
-		     {cons, L,
-		      {tuple, L,
-		       [{var, L, AArgs}, {var, L, Mod}, {var, L, Func}]},
-		      {var, L, Rest}},
-		     {var, L, Self}],
-		    [],
-		    [{'case', L,
-		      {call, L,
-		       {remote, L, {var, L, Mod}, {var, L, Func}},
-		       [{var, L, AArgs},
-			{atom, L, TgtFunM},
-			{atom, L, TgtFunN},
-			{var, L, FuncResult}]},
-		      [{clause, L,
-			[{tuple, L, [{atom, L, proceed}, {var, L, NewResult}]}],
-			[],
-			[{call, L,
-			  {var, L, Self},
-			  [{var, L, NewResult}, {var, L, Rest}, {var, L, Self}]}]},
-		       {clause, L, 
-			[{tuple, L, [{atom, L, skip}, {var, L, NewResult}]}],
-			[],
-			[{var, L, NewResult}]},
-		       {clause, L,
-			[{tuple, L,
-			  [{atom, L, error},
-			   {tuple, L,
-			    [{var, L, EMod},
-			     {var, L, EFunc},
-			     {var, L, NewResult}]}]}],
-			[],
-			[{call, L, 
-			  {atom, L, apply},
-			  [{var, L, EMod},
-			   {var, L, EFunc},
-			   {var, L, NewResult}]}]}]}]},
-		   {clause, L, 
-		    [{var, L, FuncResult}, {nil, L}, {var, L, '_'}],
-		    [],
-		    [{var, L, FuncResult}]}]}}},
-	       {call, L,
-		{var, L, AFunName},
-		[{call, L,
-		  {var, L, OrgFunName}, []},
-		 Annotations,
-		 {var, L, AFunName}]}],
-    
+                {var, L, OrgFunName},
+                {'fun', L, 
+                 {clauses,
+                  [{clause, L, [], [],
+                    Body}]}}},
+               {match, L, 
+                {var, L, AFunName},
+                {'fun', L,
+                 {clauses,
+                  [{clause, L,
+                    [{var, L, FuncResult},
+                     {cons, L,
+                      {tuple, L,
+                       [{var, L, AArgs}, {var, L, Mod}, {var, L, Func}]},
+                      {var, L, Rest}},
+                     {var, L, Self}],
+                    [],
+                    [{'case', L,
+                      {call, L,
+                       {remote, L, {var, L, Mod}, {var, L, Func}},
+                       [{var, L, AArgs},
+                        {atom, L, TgtFunM},
+                        {atom, L, TgtFunN},
+                        {var, L, FuncResult}]},
+                      [{clause, L,
+                        [{tuple, L, [{atom, L, proceed}, {var, L, NewResult}]}],
+                        [],
+                        [{call, L,
+                          {var, L, Self},
+                          [{var, L, NewResult}, {var, L, Rest}, {var, L, Self}]}]},
+                       {clause, L, 
+                        [{tuple, L, [{atom, L, skip}, {var, L, NewResult}]}],
+                        [],
+                        [{var, L, NewResult}]},
+                       {clause, L,
+                        [{tuple, L,
+                          [{atom, L, error},
+                           {tuple, L,
+                            [{var, L, EMod},
+                             {var, L, EFunc},
+                             {var, L, NewResult}]}]}],
+                        [],
+                        [{call, L, 
+                          {atom, L, apply},
+                          [{var, L, EMod},
+                           {var, L, EFunc},
+                           {var, L, NewResult}]}]}]}]},
+                   {clause, L, 
+                    [{var, L, FuncResult}, {nil, L}, {var, L, '_'}],
+                    [],
+                    [{var, L, FuncResult}]}]}}},
+               {call, L,
+                {var, L, AFunName},
+                [{call, L,
+                  {var, L, OrgFunName}, []},
+                 Annotations,
+                 {var, L, AFunName}]}],
+
     {clause, L, CArgs, Guards, NewBody}.
 
 -spec(prepare_arguments_list/2 :: (list(tuple()), integer()) -> tuple()).	     
@@ -230,15 +278,16 @@ prepare_arguments_list([H | R], Line) ->
      prepare_arguments_list(R, Line)};
 prepare_arguments_list([], Line) ->
     {nil, Line}.
-    
+
 -spec(get_unique_atom/0 :: () -> atom()).	     
 get_unique_atom() ->
     list_to_atom(lists:flatten(io_lib:format("~w", [now()]))).
 
+-spec(prepare_annotations/2 :: (list(), integer()) -> term()).
 prepare_annotations(Annotations, Line) ->
     NewLines = [$\n || _ <- lists:seq(1, Line-1)],
     SAnnotations = NewLines ++ lists:flatten(io_lib:format("~w.", [Annotations])),
     {ok, Tokens, _} = erl_scan:string(SAnnotations),
     {ok, [Parsed]} = erl_parse:parse_exprs(Tokens),
-    
+
     Parsed.
