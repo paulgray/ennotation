@@ -94,7 +94,7 @@ transform_clause([OrgClause | Rest], Before, After, Clauses) ->
 transform_clause([], _, _, Clauses) ->
     lists:reverse(Clauses).
 
--spec(transform_clause_before :: (tuple(), list()) -> tuple()).
+-spec(transform_clause_before/2 :: (tuple(), list()) -> tuple()).
 transform_clause_before(Clause, []) ->
     Clause;
 transform_clause_before({clause, L, CArgs, Guards, Body}, Annotations0) ->
