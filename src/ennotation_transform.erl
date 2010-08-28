@@ -96,7 +96,7 @@ transform_function_before({function, Line, Name, Arity, Clauses},
     ClauseArgs = generate_args(Arity, Line),
 
     NewBody = [{call, Line, 
-                {atom, Line, Name},
+                {atom, Line, OrgFuncName},
                 ClauseArgs}],
     NewClause = {clause, Line, ClauseArgs, [], NewBody},
     OrgFunc = {function, Line, OrgFuncName, Arity, Clauses},
