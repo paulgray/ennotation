@@ -139,7 +139,7 @@ unique_atom() ->
 
 -spec(unique_function_name/2 :: (atom(), atom()) -> atom()).
 unique_function_name(OrgFun, AFun) ->
-    list_to_atom(lists:flatten(io_lib:format("~w_~w_~w", [erlang:phash2({OrgFun, AFun}), 
+    list_to_atom(lists:flatten(io_lib:format("~w_~w_~w", [erlang:phash2({now(), OrgFun, AFun}), 
                                                           OrgFun, AFun]))).
 
 -spec(prepare_annotation_args/2 :: (list(), integer()) -> term()).

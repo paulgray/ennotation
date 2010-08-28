@@ -20,3 +20,11 @@ fun_info_test() ->
 add_test() ->
     ?assertEqual(arg,
                  ennotation_after:ad(a, b, c, d)).
+
+no_change_test() ->
+    ?assertEqual(no_change,
+                 ennotation_after:no_change()).
+
+two_annotations_test() ->
+    ?assertEqual({{a, a}, {a, a}},
+                 ennotation_after:two_annotations(a)).

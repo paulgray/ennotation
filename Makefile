@@ -21,7 +21,7 @@ ebin/%.beam: src/%.erl
 	@echo ERLC $<
 	@erlc -pa ebin/ -I include -o ebin $<
 
-test: all $(TEST_ANNS_BEAMS) $(TEST_MODS_BEAMS) $(TEST_BEAMS)
+test: all $(TEST_MODS_BEAMS) $(TEST_ANNS_BEAMS) $(TEST_BEAMS)
 
 test_ebin/%.beam: test/%.erl
 	@echo ERLC $<
