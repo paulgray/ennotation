@@ -1,6 +1,6 @@
--module(ennotation_test).
+-module(ennotation_after).
 
--include("after_test_annotations.hrl").
+-include("after_a_annotations.hrl").
 
 -export([tr/1, re/2, re/3, fu/3, ad/4]).
 

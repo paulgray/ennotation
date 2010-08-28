@@ -1,4 +1,4 @@
--module(after_test).
+-module(after_a).
 
 -include("ennotation.hrl").
 
