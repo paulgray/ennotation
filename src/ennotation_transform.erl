@@ -90,14 +90,24 @@ transform_function(Func, Before, After) ->
 
 %% FIXME: mocked function
 -spec(transform_function_before/3 :: (tuple(), list(), list()) -> {tuple(), list()}).
-transform_function_before({function, Line, Name, Arity, Clauses} = F, 
+transform_function_before({function, Line, Name, Arity, Clauses}, 
                           [{Args, AMod, AFunc} | Rest], Added) ->
-    transform_function_before(F, Rest, Added);
+    OrgFuncName = unique_function_name(Name, AFunc),
+    ClauseArgs = generate_args(Arity, Line),
+
+    NewBody = [{call, Line, 
+                {atom, Line, Name},
+                ClauseArgs}],
+    NewClause = {clause, Line, ClauseArgs, [], NewBody},
+    OrgFunc = {function, Line, OrgFuncName, Arity, Clauses},
+
+    transform_function_before({function, Line, Name, Arity, [NewClause]}, 
+                              Rest, [OrgFunc | Added]);
 transform_function_before(F, [], Added) ->
     {F, Added}.
 
 -spec(transform_function_after/3 :: (tuple(), list(), list()) -> {tuple(), list()}).
-transform_function_after({function, Line, Name, Arity, Clauses} = F,
+transform_function_after({function, Line, Name, Arity, Clauses},
                          [{Args, AMod, AFunc} | Rest], Added) ->
     OrgFuncName = unique_function_name(Name, AFunc),
     ClauseArgs = generate_args(Arity, Line),
