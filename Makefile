@@ -13,7 +13,7 @@ ebin/%.beam: src/%.erl
 	@echo ERLC $<
 	@erlc -pa ebin/ -I include -o ebin $<
 
-test: $(TEST_BEAMS)
+test: all $(TEST_BEAMS)
 
 test_ebin/%.beam: test/%.erl
 	@echo ERLC $<

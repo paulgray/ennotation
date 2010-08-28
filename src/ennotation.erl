@@ -16,7 +16,7 @@
 -export([parse_transform/2]).
 
 -record(state, {
-          annotations :: list(), %% list of all annotations for the given module
+          annotations = [] :: list(), %% list of all annotations for the given module
           module_name :: atom(), %% module name
           module_path :: string() %% path to the module sources
          }).
