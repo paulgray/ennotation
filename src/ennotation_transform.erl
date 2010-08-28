@@ -90,7 +90,7 @@ transform_function(Func, Before, After) ->
 
 %% FIXME: mocked function
 -spec(transform_function_before/3 :: (tuple(), list(), list()) -> {tuple(), list()}).
-transform_function_before({function, Line, Name, Artiy, Clauses} = F, 
+transform_function_before({function, Line, Name, Arity, Clauses} = F, 
                           [{Args, AMod, AFunc} | Rest], Added) ->
     transform_function_before(F, Rest, Added);
 transform_function_before(F, [], Added) ->
@@ -101,7 +101,23 @@ transform_function_after({function, Line, Name, Arity, Clauses} = F,
                          [{Args, AMod, AFunc} | Rest], Added) ->
     OrgFuncName = unique_function_name(Name, AFunc),
     ClauseArgs = generate_args(Arity, Line),
-    NewBody = [{call, Line, {atom, Line, OrgFuncName}, ClauseArgs}],
+    ResultVar = unique_atom(),
+    AnnotationArgs = prepare_annotation_args(Args, Line),
+    
+    NewBody = [{match, Line, 
+                {var, Line, ResultVar},
+                {call, Line, 
+                 {atom, Line, OrgFuncName}, 
+                 ClauseArgs}},
+               {call, Line, 
+                {remote, Line, 
+                 {atom, Line, AMod}, 
+                 {atom, Line, AFunc}},
+                [AnnotationArgs,
+                 {atom, Line, get(module_name)},
+                 {atom, Line, Name},
+                 {var, Line, ResultVar}
+                ]}],
     NewClause = {clause, Line, ClauseArgs, [], NewBody},
     OrgFunc = {function, Line, OrgFuncName, Arity, Clauses},
 
@@ -117,8 +133,8 @@ prepare_arguments_list([H | R], Line) ->
 prepare_arguments_list([], Line) ->
     {nil, Line}.
 
--spec(get_unique_atom/0 :: () -> atom()).	     
-get_unique_atom() ->
+-spec(unique_atom/0 :: () -> atom()).	     
+unique_atom() ->
     list_to_atom(lists:flatten(io_lib:format("~w", [now()]))).
 
 -spec(unique_function_name/2 :: (atom(), atom()) -> atom()).
@@ -126,8 +142,8 @@ unique_function_name(OrgFun, AFun) ->
     list_to_atom(lists:flatten(io_lib:format("~w_~w_~w", [erlang:phash2({OrgFun, AFun}), 
                                                           OrgFun, AFun]))).
 
--spec(prepare_annotations/2 :: (list(), integer()) -> term()).
-prepare_annotations(Annotations, Line) ->
+-spec(prepare_annotation_args/2 :: (list(), integer()) -> term()).
+prepare_annotation_args(Annotations, Line) ->
     NewLines = [$\n || _ <- lists:seq(1, Line-1)],
     SAnnotations = NewLines ++ lists:flatten(io_lib:format("~w.", [Annotations])),
     {ok, Tokens, _} = erl_scan:string(SAnnotations),
