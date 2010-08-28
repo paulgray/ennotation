@@ -9,6 +9,7 @@ TEST_MODS_BEAMS:=$(patsubst test_mods/%.erl, test_ebin/%.beam, $(TEST_MODS_SOURC
 
 TEST_SOURCES:=$(wildcard test/*.erl)
 TEST_BEAMS:=$(patsubst test/%.erl, test_ebin/%.beam, $(TEST_SOURCES))
+TEST_MODULES:=$(patsubst test/%.erl, %, $(TEST_SOURCES))
 
 all: $(BEAMS)
 
@@ -38,3 +39,8 @@ test_ebin:
 	@echo MKDIR test_ebin
 	@mkdir -p test_ebin
 
+## FIXME: support more than one test module
+run_test: test
+	@echo RUNTEST
+	@echo $(TEST_MODULES)
+	@erl -noinput -pa ebin -pa test_ebin -eval "eunit:test($(TEST_MODULES), [verbose]), init:stop()."
