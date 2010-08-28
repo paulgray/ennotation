@@ -93,11 +93,29 @@ transform_function(Func, Before, After) ->
 transform_function_before({function, Line, Name, Arity, Clauses}, 
                           [{Args, AMod, AFunc} | Rest], Added) ->
     OrgFuncName = unique_function_name(Name, AFunc),
-    ClauseArgs = generate_args(Arity, Line),
+    ClauseArgs = generate_args(Arity, "Arg", Line),
+    AnnotationArgs = prepare_annotation_args(Args, Line),
+    IntClauseArgs = prepare_arguments_list(ClauseArgs, Line),
+    ResVars = generate_args(Arity, "Res", Line),
+    ResArgs = prepare_arguments_list(ResVars, Line),
 
-    NewBody = [{call, Line, 
-                {atom, Line, OrgFuncName},
-                ClauseArgs}],
+    NewBody = [{'case', Line, 
+                {call, Line, 
+                 {remote, Line,
+                  {atom, Line, AMod},
+                  {atom, Line, AFunc}},
+                 [AnnotationArgs,
+                  {atom, Line, get(module_name)},
+                  {atom, Line, Name},
+                  IntClauseArgs]},
+                [{clause, Line, 
+                  [{tuple, Line, 
+                    [{atom, Line, ok},
+                     ResArgs]}],
+                  [],
+                  [{call, Line, 
+                    {atom, Line, OrgFuncName},
+                    ResVars}]}]}],
     NewClause = {clause, Line, ClauseArgs, [], NewBody},
     OrgFunc = {function, Line, OrgFuncName, Arity, Clauses},
 
@@ -110,7 +128,7 @@ transform_function_before(F, [], Added) ->
 transform_function_after({function, Line, Name, Arity, Clauses},
                          [{Args, AMod, AFunc} | Rest], Added) ->
     OrgFuncName = unique_function_name(Name, AFunc),
-    ClauseArgs = generate_args(Arity, Line),
+    ClauseArgs = generate_args(Arity, "Arg", Line),
     ResultVar = unique_atom(),
     AnnotationArgs = prepare_annotation_args(Args, Line),
     
@@ -161,9 +179,9 @@ prepare_annotation_args(Annotations, Line) ->
 
     Parsed.
 
--spec(generate_args/2 :: (integer(), integer()) -> list()).    
-generate_args(Arity, Line) ->
+-spec(generate_args/3 :: (integer(), string(), integer()) -> list()).    
+generate_args(Arity, Prefix, Line) ->
     lists:reverse(lists:foldl(fun(N, Acc) ->
                                       [{var, Line, 
-                                        list_to_atom("Arg" ++ integer_to_list(N))} | Acc]
+                                        list_to_atom(Prefix ++ integer_to_list(N))} | Acc]
                               end, [], lists:seq(1, Arity))).

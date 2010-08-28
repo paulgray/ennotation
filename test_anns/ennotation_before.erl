@@ -6,7 +6,14 @@
 
 ?UNCHANGED(something).
 tr(MyArg) ->
-    {transparent, MyArg}.
+    case lists:seq(1, 10) of
+        {ok, [1, 2, 3]} ->
+            something1;
+        {stop, Reason} ->
+            something2;
+        _ ->
+            {transparent, MyArg}
+    end.
 
 ?STOP(reason).
 st(A, B) ->

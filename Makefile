@@ -16,8 +16,8 @@ TEST_MODULES:=[after_test,before_test]
 all: $(BEAMS)
 
 clean:
-	@echo RM ebin/*ebin test_ebin/*ebin
-	@rm -f ebin/*beam test_ebin/*ebin
+	@echo RM ebin/*beam test_ebin/*beam
+	@rm -f ebin/*beam test_ebin/*beam
 
 ebin/%.beam: src/%.erl
 	@echo ERLC $<
