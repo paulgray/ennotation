@@ -100,7 +100,7 @@ transform_function_before(F, []) ->
 transform_function_after({function, Line, Name, Artity, Clauses} = F,
                          [{Args, AMod, AFunc} | Rest]) ->
     OrgFuncName = unique_function_name(Name, AFunc),
-    ClauseArgs = generate_args(Artity),
+    ClauseArgs = generate_args(Artity, Line),
     NewBody = [{atom, Line, ok}],
     NewClause = {clause, Line, ClauseArgs, [], NewBody},
 
@@ -134,12 +134,9 @@ prepare_annotations(Annotations, Line) ->
 
     Parsed.
 
-%% FIXME - add line number
--spec(generate_args/1 :: (integer()) -> list()).    
-generate_args(Arity) ->
+-spec(generate_args/2 :: (integer(), integer()) -> list()).    
+generate_args(Arity, Line) ->
     lists:reverse(lists:foldl(fun(N, Acc) ->
-                                      [{var, 1, 
-                                        list_to_atom("Arg" ++ 
-                                                         integer_to_list(N)
-                                                    )} | Acc]
+                                      [{var, Line, 
+                                        list_to_atom("Arg" ++ integer_to_list(N))} | Acc]
                               end, [], lists:seq(1, Arity))).
