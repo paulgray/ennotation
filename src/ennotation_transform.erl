@@ -96,6 +96,7 @@ transform_function_after({function, Line, Name, Artity, Clauses} = F,
                          [{Args, AMod, AFunc} | Rest]) ->
     OrgFuncName = unique_function_name(Name, AFunc),
     ClauseArgs = generate_args(Artity),
+    NewBody = [],
     NewClause = {clause, Line, ClauseArgs, [], NewBody},
 
     {function, Line, Name, Artity, [NewClause]}.
