@@ -74,8 +74,8 @@ transform_tree([{attribute, _, user_ennotation, {Args, 'after', Mod, Func}} | Re
 transform_tree([F | Rest], Tree, [], []) ->
     transform_tree(Rest, [F | Tree], [], []);
 transform_tree([{function, _, _, _, _} = F | Rest], Tree, Before, After) ->
-    NewF = transform_function(F, Before, After),
-    transform_tree(Rest, [NewF | Tree], [], []);
+    {NewF, AddedFuncs} = transform_function(F, Before, After),
+    transform_tree(Rest, lists:append([NewF | AddedFuncs], Tree), [], []);
 transform_tree([Element | Rest], Tree, Before, After) ->
     transform_tree(Rest, [Element | Tree], Before, After);
 transform_tree([], Tree, _, _) ->
@@ -83,31 +83,32 @@ transform_tree([], Tree, _, _) ->
 
 %% Before and After lists are coming in reverse order, but 
 %% as we built it from the end it is correct
--spec(transform_function/3 :: (tuple(), list(), list()) -> tuple()).
+-spec(transform_function/3 :: (tuple(), list(), list()) -> {tuple(), list()}).
 transform_function(Func, Before, After) ->
-    NewFunc = transform_function_before(Func, Before),
-    transform_function_after(NewFunc, After).
+    {NewFunc, AddedFuncs} = transform_function_before(Func, Before, []),
+    transform_function_after(NewFunc, After, AddedFuncs).
 
 %% FIXME: mocked function
--spec(transform_function_before/2 :: (tuple(), list()) -> tuple()).
+-spec(transform_function_before/3 :: (tuple(), list(), list()) -> {tuple(), list()}).
 transform_function_before({function, Line, Name, Artiy, Clauses} = F, 
-                          [{Args, AMod, AFunc} | Rest]) ->
-    transform_function_before(F, Rest);
-transform_function_before(F, []) ->
-    F.
+                          [{Args, AMod, AFunc} | Rest], Added) ->
+    transform_function_before(F, Rest, Added);
+transform_function_before(F, [], Added) ->
+    {F, Added}.
 
--spec(transform_function_after/2 :: (tuple(), list()) -> tuple()).
-transform_function_after({function, Line, Name, Artity, Clauses} = F,
-                         [{Args, AMod, AFunc} | Rest]) ->
+-spec(transform_function_after/3 :: (tuple(), list(), list()) -> {tuple(), list()}).
+transform_function_after({function, Line, Name, Arity, Clauses} = F,
+                         [{Args, AMod, AFunc} | Rest], Added) ->
     OrgFuncName = unique_function_name(Name, AFunc),
-    ClauseArgs = generate_args(Artity, Line),
-    NewBody = [{atom, Line, ok}],
+    ClauseArgs = generate_args(Arity, Line),
+    NewBody = [{call, Line, {atom, Line, OrgFuncName}, ClauseArgs}],
     NewClause = {clause, Line, ClauseArgs, [], NewBody},
+    OrgFunc = {function, Line, OrgFuncName, Arity, Clauses},
 
-    transform_function_after({function, Line, Name, Artity, [NewClause]},
-                             Rest);
-transform_function_after(F, []) ->
-    F.
+    transform_function_after({function, Line, Name, Arity, [NewClause]},
+                             Rest, [OrgFunc | Added]);
+transform_function_after(F, [], Added) ->
+    {F, Added}.
 
 -spec(prepare_arguments_list/2 :: (list(), integer()) -> tuple()).
 prepare_arguments_list([H | R], Line) ->

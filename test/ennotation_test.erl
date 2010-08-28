@@ -6,6 +6,7 @@
 
 ?TRANSPARENT(something).
 tr(MyArg) ->
+    ok(MyArg),
     {MyArg, MyArg}.
 
 ?REVERSE(ugh).
@@ -23,3 +24,6 @@ fu(A, B, C) ->
 ?ADD(arg).
 ad(Q, W, E, R) ->
     {Q, W, E, R}.
+
+ok(A) ->
+    ok.

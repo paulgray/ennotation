@@ -7,7 +7,8 @@ TEST_BEAMS:=$(patsubst test/%.erl, test_ebin/%.beam, $(TEST_SOURCES))
 all: $(BEAMS)
 
 clean:
-	rm -f ebin/*beam
+	@echo RM ebin/*ebin test_ebin/*ebin
+	@rm -f ebin/*beam test_ebin/*ebin
 
 ebin/%.beam: src/%.erl
 	@echo ERLC $<
