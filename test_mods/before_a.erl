@@ -21,4 +21,4 @@ exchange(Args, _, _, _) ->
 
 ?BEFORE.
 duplicate(_, _, _, Args) ->
-    [{Arg, Arg} || Arg <- Args].
+    {ok, [{Arg, Arg} || Arg <- Args]}.
