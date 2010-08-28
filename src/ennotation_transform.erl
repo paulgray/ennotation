@@ -56,7 +56,10 @@
 
 -spec(parse_transform/2 :: (list(), list()) -> list()).
 parse_transform(Tree, _Options) ->
-    transform_tree(Tree, [], [], []).
+    io:format("Original tree: ~p~n~n~n", [Tree]),
+    NewTree = transform_tree(Tree, [], [], []),
+    io:format("Modified tree: ~p~n", [NewTree]),
+    NewTree.
 
 -spec(transform_tree/4 :: (list(), list(), list(), list()) -> list()).
 transform_tree([{attribute, _, module, Name} = A | Rest], Tree, [], []) ->
@@ -89,6 +92,8 @@ transform_function(Func, Before, After) ->
 -spec(transform_function_before/2 :: (tuple(), list()) -> tuple()).
 transform_function_before({function, Line, Name, Artiy, Clauses} = F, 
                           [{Args, AMod, AFunc} | Rest]) ->
+    transform_function_before(F, Rest);
+transform_function_before(F, []) ->
     F.
 
 -spec(transform_function_after/2 :: (tuple(), list()) -> tuple()).
@@ -96,10 +101,13 @@ transform_function_after({function, Line, Name, Artity, Clauses} = F,
                          [{Args, AMod, AFunc} | Rest]) ->
     OrgFuncName = unique_function_name(Name, AFunc),
     ClauseArgs = generate_args(Artity),
-    NewBody = [],
+    NewBody = [{atom, Line, ok}],
     NewClause = {clause, Line, ClauseArgs, [], NewBody},
 
-    {function, Line, Name, Artity, [NewClause]}.
+    transform_function_after({function, Line, Name, Artity, [NewClause]},
+                             Rest);
+transform_function_after(F, []) ->
+    F.
 
 -spec(prepare_arguments_list/2 :: (list(), integer()) -> tuple()).
 prepare_arguments_list([H | R], Line) ->
@@ -130,5 +138,8 @@ prepare_annotations(Annotations, Line) ->
 -spec(generate_args/1 :: (integer()) -> list()).    
 generate_args(Arity) ->
     lists:reverse(lists:foldl(fun(N, Acc) ->
-                                      [{var, 1, list_to_atom("Arg" ++ N)} | Acc]
+                                      [{var, 1, 
+                                        list_to_atom("Arg" ++ 
+                                                         integer_to_list(N)
+                                                    )} | Acc]
                               end, [], lists:seq(1, Arity))).
