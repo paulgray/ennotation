@@ -26,5 +26,5 @@ no_change_test() ->
                  ennotation_after:no_change()).
 
 two_annotations_test() ->
-    ?assertEqual({{a, a}, {a, a}},
+    ?assertEqual({ennotation_after, two_annotations, {a, a}},
                  ennotation_after:two_annotations(a)).

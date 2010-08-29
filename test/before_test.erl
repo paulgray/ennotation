@@ -25,7 +25,7 @@ no_change_test() ->
                  ennotation_before:no_change()).
 
 two_anns_test() ->
-    ?assertEqual({3, [first, second, third]},
+    ?assertEqual({3, [second, first, third]},
                  ennotation_before:two_anns([third], skip)).
 
 wrong_test() ->

@@ -11,7 +11,7 @@ TEST_SOURCES:=$(wildcard test/*.erl)
 TEST_BEAMS:=$(patsubst test/%.erl, test_ebin/%.beam, $(TEST_SOURCES))
 # FIXME: implement 'join' function 
 # TEST_MODULES:=$(patsubst test/%.erl, %, $(TEST_SOURCES))
-TEST_MODULES:=[after_test,before_test]
+TEST_MODULES:=[after_test,before_test,both_test]
 
 all: $(BEAMS)
 

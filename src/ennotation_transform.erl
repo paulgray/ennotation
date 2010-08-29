@@ -53,7 +53,6 @@
 %% TODO:
 %% - documentation
 %% - correct line numbers
-%% - adding error clauses
 %% - consider putting external 'specs' in Erlang consultable file
 %%   (e.g. by integrating with meck)
 -module(ennotation_transform).
@@ -62,10 +61,7 @@
 
 -spec(parse_transform/2 :: (list(), list()) -> list()).
 parse_transform(Tree, _Options) ->
-    io:format("Original tree: ~p~n~n~n", [Tree]),
-    NewTree = transform_tree(Tree, [], [], []),
-    io:format("Modified tree: ~p~n", [NewTree]),
-    NewTree.
+    transform_tree(Tree, [], [], []).
 
 -spec(transform_tree/4 :: (list(), list(), list(), list()) -> list()).
 transform_tree([{attribute, _, module, Name} = A | Rest], Tree, [], []) ->
@@ -80,19 +76,20 @@ transform_tree([{attribute, _, user_ennotation, {Args, 'after', Mod, Func}} | Re
 transform_tree([F | Rest], Tree, [], []) ->
     transform_tree(Rest, [F | Tree], [], []);
 transform_tree([{function, _, _, _, _} = F | Rest], Tree, Before, After) ->
-    {NewF, AddedFuncs} = transform_function(F, lists:reverse(Before), After),
+    {NewF, AddedFuncs} = transform_function(F, Before, lists:reverse(After)),
     transform_tree(Rest, lists:append([NewF | AddedFuncs], Tree), [], []);
 transform_tree([Element | Rest], Tree, Before, After) ->
     transform_tree(Rest, [Element | Tree], Before, After);
 transform_tree([], Tree, _, _) ->
     lists:reverse(Tree).
 
-%% Before list is coming in reverse order, but 
-%% as we built it from the end it is correct
+%% we need to transform the function using 'after' annotations in first order
+%% as 'before' annotation might stop the function calls (and thus bypass 'after'
+%% call flow)
 -spec(transform_function/3 :: (tuple(), list(), list()) -> {tuple(), list()}).
 transform_function(Func, Before, After) ->
-    {NewFunc, AddedFuncs} = transform_function_before(Func, Before, []),
-    transform_function_after(NewFunc, After, AddedFuncs).
+    {NewFunc, AddedFuncs} = transform_function_after(Func, After, []),
+    transform_function_before(NewFunc, Before, AddedFuncs).
 
 -spec(transform_function_before/3 :: (tuple(), list(), list()) -> {tuple(), list()}).
 transform_function_before({function, Line, Name, Arity, Clauses}, 

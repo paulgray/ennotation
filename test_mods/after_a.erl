@@ -6,7 +6,7 @@
          reverse/4,
          fun_info/4,
          add/4,
-         duplicate/4]).
+         dup/4]).
 
 ?AFTER.
 transparent(_, _, _, Result) ->
@@ -30,5 +30,5 @@ add(AArgs, _, _, _) ->
     AArgs.
 
 ?AFTER.
-duplicate(_, _, _, Res) ->
+dup(_, _, _, Res) ->
     {Res, Res}.

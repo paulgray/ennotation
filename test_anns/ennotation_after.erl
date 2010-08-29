@@ -28,7 +28,7 @@ ad(Q, W, E, R) ->
 no_change() ->
     no_change.
 
-?DUPLICATE(nothing).
-?DUPLICATE(nothing).
+?DUP(nothing).
+?FUN_INFO(foobar).
 two_annotations(A) ->
     A.
