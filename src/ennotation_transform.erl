@@ -50,6 +50,12 @@
 %%% @end
 %%% Created : 26 Aug 2010 by Michal Ptaszek <michal.ptaszek@erlang-solutions.com>
 %%%-------------------------------------------------------------------
+%% TODO:
+%% - documentation
+%% - correct line numbers
+%% - adding error clauses
+%% - consider putting external 'specs' in Erlang consultable file
+%%   (e.g. by integrating with meck)
 -module(ennotation_transform).
 
 -export([parse_transform/2]).
@@ -74,14 +80,14 @@ transform_tree([{attribute, _, user_ennotation, {Args, 'after', Mod, Func}} | Re
 transform_tree([F | Rest], Tree, [], []) ->
     transform_tree(Rest, [F | Tree], [], []);
 transform_tree([{function, _, _, _, _} = F | Rest], Tree, Before, After) ->
-    {NewF, AddedFuncs} = transform_function(F, Before, After),
+    {NewF, AddedFuncs} = transform_function(F, lists:reverse(Before), After),
     transform_tree(Rest, lists:append([NewF | AddedFuncs], Tree), [], []);
 transform_tree([Element | Rest], Tree, Before, After) ->
     transform_tree(Rest, [Element | Tree], Before, After);
 transform_tree([], Tree, _, _) ->
     lists:reverse(Tree).
 
-%% Before and After lists are coming in reverse order, but 
+%% Before list is coming in reverse order, but 
 %% as we built it from the end it is correct
 -spec(transform_function/3 :: (tuple(), list(), list()) -> {tuple(), list()}).
 transform_function(Func, Before, After) ->

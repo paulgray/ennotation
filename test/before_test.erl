@@ -19,3 +19,11 @@ exchange_test() ->
 duplicate_test() ->
     ?assertEqual({{a, a}, {b, b}}, 
                  ennotation_before:du(a, b)).
+
+no_change_test() ->
+    ?assertEqual(no_change, 
+                 ennotation_before:no_change()).
+
+two_anns_test() ->
+    ?assertEqual({3, [first, second, third]},
+                 ennotation_before:two_anns([third], skip)).
