@@ -81,7 +81,7 @@ transform_tree([{function, _, _, _, _} = F | Rest], Tree, Before, After) ->
 transform_tree([Element | Rest], Tree, Before, After) ->
     transform_tree(Rest, [Element | Tree], Before, After);
 transform_tree([], Tree, _, _) ->
-    lists:reverse(Tree).
+    ennotation_line:correct_line_numbers(lists:reverse(Tree), 1, []).
 
 %% we need to transform the function using 'after' annotations in first order
 %% as 'before' annotation might stop the function calls (and thus bypass 'after'
