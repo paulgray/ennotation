@@ -3,7 +3,7 @@
 -include("before_a_annotations.hrl").
 
 -export([tr/1, st/2, du/2, ex/3]).
--export([no_change/0, two_anns/2]).
+-export([no_change/0, two_anns/2, wrong/3]).
 
 ?UNCHANGED(something).
 tr(MyArg) ->
@@ -35,3 +35,7 @@ no_change() ->
 ?APPEND(second).
 two_anns(List, _) ->
     {length(List), List}.
+
+?INCOMPATIBLE(wrong).
+wrong(A, B, C) ->
+    {A, B, C}.

@@ -27,3 +27,7 @@ no_change_test() ->
 two_anns_test() ->
     ?assertEqual({3, [first, second, third]},
                  ennotation_before:two_anns([third], skip)).
+
+wrong_test() ->
+    ?assertThrow({incompatible_before_annotation_result, [wrong, 1, 2, 3]},
+                 ennotation_before:wrong(1, 2, 3)).

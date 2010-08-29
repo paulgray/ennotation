@@ -94,7 +94,6 @@ transform_function(Func, Before, After) ->
     {NewFunc, AddedFuncs} = transform_function_before(Func, Before, []),
     transform_function_after(NewFunc, After, AddedFuncs).
 
-%% FIXME: mocked function
 -spec(transform_function_before/3 :: (tuple(), list(), list()) -> {tuple(), list()}).
 transform_function_before({function, Line, Name, Arity, Clauses}, 
                           [{Args, AMod, AFunc} | Rest], Added) ->
@@ -104,7 +103,6 @@ transform_function_before({function, Line, Name, Arity, Clauses},
     IntClauseArgs = prepare_arguments_list(ClauseArgs, Line),
     ResVars = generate_args(Arity, "Res", Line),
     ResArgs = prepare_arguments_list(ResVars, Line),
-    StopVar = unique_atom(),
 
     NewBody = [{'case', Line, 
                 {call, Line, 
@@ -126,9 +124,21 @@ transform_function_before({function, Line, Name, Arity, Clauses},
                  {clause, Line, 
                   [{tuple, Line,
                     [{atom, Line, stop},
-                     {var, Line, StopVar}]}],
+                     {var, Line, 'Stop'}]}],
                   [],
-                  [{var, Line, StopVar}]}]}],
+                  [{var, Line, 'Stop'}]},
+                 {clause, Line, 
+                  [{tuple, Line,
+                    [{atom, Line, ok},
+                     {var, Line, 'Else'}]}],
+                  [],
+                  [{call, Line,
+                    {remote, Line,
+                     {atom, Line, erlang},
+                     {atom, Line, throw}},
+                    [{tuple, Line,
+                      [{atom, Line, incompatible_before_annotation_result},
+                       {var, Line, 'Else'}]}]}]}]}],
 
     NewClause = {clause, Line, ClauseArgs, [], NewBody},
     OrgFunc = {function, Line, OrgFuncName, Arity, Clauses},
@@ -143,11 +153,10 @@ transform_function_after({function, Line, Name, Arity, Clauses},
                          [{Args, AMod, AFunc} | Rest], Added) ->
     OrgFuncName = unique_function_name(Name, AFunc),
     ClauseArgs = generate_args(Arity, "Arg", Line),
-    ResultVar = unique_atom(),
     AnnotationArgs = prepare_annotation_args(Args, Line),
     
     NewBody = [{match, Line, 
-                {var, Line, ResultVar},
+                {var, Line, 'Result'},
                 {call, Line, 
                  {atom, Line, OrgFuncName}, 
                  ClauseArgs}},
@@ -158,7 +167,7 @@ transform_function_after({function, Line, Name, Arity, Clauses},
                 [AnnotationArgs,
                  {atom, Line, get(module_name)},
                  {atom, Line, Name},
-                 {var, Line, ResultVar}
+                 {var, Line, 'Result'}
                 ]}],
     NewClause = {clause, Line, ClauseArgs, [], NewBody},
     OrgFunc = {function, Line, OrgFuncName, Arity, Clauses},
@@ -174,10 +183,6 @@ prepare_arguments_list([H | R], Line) ->
      prepare_arguments_list(R, Line)};
 prepare_arguments_list([], Line) ->
     {nil, Line}.
-
--spec(unique_atom/0 :: () -> atom()).	     
-unique_atom() ->
-    list_to_atom(lists:flatten(io_lib:format("~w", [now()]))).
 
 -spec(unique_function_name/2 :: (atom(), atom()) -> atom()).
 unique_function_name(OrgFun, AFun) ->
