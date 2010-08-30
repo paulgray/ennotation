@@ -61,7 +61,9 @@
 
 -spec(parse_transform/2 :: (list(), list()) -> list()).
 parse_transform(Tree, _Options) ->
-    transform_tree(Tree, [], [], []).
+    NewTree = transform_tree(Tree, [], [], []),
+    io:format("~p~n", [NewTree]),
+    NewTree.
 
 -spec(transform_tree/4 :: (list(), list(), list(), list()) -> list()).
 transform_tree([{attribute, _, module, Name} = A | Rest], Tree, [], []) ->
@@ -95,52 +97,52 @@ transform_function(Func, Before, After) ->
 transform_function_before({function, Line, Name, Arity, Clauses}, 
                           [{Args, AMod, AFunc} | Rest], Added) ->
     OrgFuncName = unique_function_name(Name, AFunc),
-    ClauseArgs = generate_args(Arity, "Arg", Line),
-    AnnotationArgs = prepare_annotation_args(Args, Line),
-    IntClauseArgs = prepare_arguments_list(ClauseArgs, Line),
-    ResVars = generate_args(Arity, "Res", Line),
-    ResArgs = prepare_arguments_list(ResVars, Line),
+    ClauseArgs = generate_args(Arity, "Arg", added(Line, 0)),
+    AnnotationArgs = prepare_annotation_args(Args, added(Line, 1)),
+    IntClauseArgs = prepare_arguments_list(ClauseArgs, added(Line, 1)),
+    ResVars = generate_args(Arity, "Res", added(Line, 3)),
+    ResArgs = prepare_arguments_list(ResVars, added(Line, 2)),
 
-    NewBody = [{'case', Line, 
-                {call, Line, 
-                 {remote, Line,
-                  {atom, Line, AMod},
-                  {atom, Line, AFunc}},
+    NewBody = [{'case', added(Line, 1), 
+                {call, added(Line, 1), 
+                 {remote, added(Line, 1),
+                  {atom, added(Line, 1), AMod},
+                  {atom, added(Line, 1), AFunc}},
                  [AnnotationArgs,
-                  {atom, Line, get(module_name)},
-                  {atom, Line, Name},
+                  {atom, added(Line, 1), get(module_name)},
+                  {atom, added(Line, 1), Name},
                   IntClauseArgs]},
-                [{clause, Line, 
-                  [{tuple, Line, 
-                    [{atom, Line, ok},
+                [{clause, added(Line, 2), 
+                  [{tuple, added(Line, 2), 
+                    [{atom, added(Line, 2), ok},
                      ResArgs]}],
                   [],
-                  [{call, Line, 
-                    {atom, Line, OrgFuncName},
+                  [{call, added(Line, 3), 
+                    {atom, added(Line, 3), OrgFuncName},
                     ResVars}]},
-                 {clause, Line, 
-                  [{tuple, Line,
-                    [{atom, Line, stop},
-                     {var, Line, 'Stop'}]}],
+                 {clause, added(Line, 4), 
+                  [{tuple, added(Line, 4),
+                    [{atom, added(Line, 4), stop},
+                     {var, added(Line, 4), 'Stop'}]}],
                   [],
-                  [{var, Line, 'Stop'}]},
-                 {clause, Line, 
-                  [{tuple, Line,
-                    [{atom, Line, ok},
-                     {var, Line, 'Else'}]}],
+                  [{var, added(Line, 5), 'Stop'}]},
+                 {clause, added(Line, 6), 
+                  [{tuple, added(Line, 6),
+                    [{atom, added(Line, 6), ok},
+                     {var, added(Line, 6), 'Else'}]}],
                   [],
-                  [{call, Line,
-                    {remote, Line,
-                     {atom, Line, erlang},
-                     {atom, Line, throw}},
-                    [{tuple, Line,
-                      [{atom, Line, incompatible_before_annotation_result},
-                       {var, Line, 'Else'}]}]}]}]}],
+                  [{call, added(Line, 7),
+                    {remote, added(Line, 7),
+                     {atom, added(Line, 7), erlang},
+                     {atom, added(Line, 7), throw}},
+                    [{tuple, added(Line, 7),
+                      [{atom, added(Line, 7), incompatible_before_annotation_result},
+                       {var, added(Line, 7), 'Else'}]}]}]}]}],
 
-    NewClause = {clause, Line, ClauseArgs, [], NewBody},
-    OrgFunc = {function, Line, OrgFuncName, Arity, Clauses},
+    NewClause = {clause, added(Line, 0), ClauseArgs, [], NewBody},
+    OrgFunc = {function, added(Line, 0), OrgFuncName, Arity, Clauses},
 
-    transform_function_before({function, Line, Name, Arity, [NewClause]}, 
+    transform_function_before({function, added(Line, 0), Name, Arity, [NewClause]}, 
                               Rest, [OrgFunc | Added]);
 transform_function_before(F, [], Added) ->
     {F, Added}.
@@ -149,27 +151,27 @@ transform_function_before(F, [], Added) ->
 transform_function_after({function, Line, Name, Arity, Clauses},
                          [{Args, AMod, AFunc} | Rest], Added) ->
     OrgFuncName = unique_function_name(Name, AFunc),
-    ClauseArgs = generate_args(Arity, "Arg", Line),
-    AnnotationArgs = prepare_annotation_args(Args, Line),
+    ClauseArgs = generate_args(Arity, "Arg", added(Line, 1)),
+    AnnotationArgs = prepare_annotation_args(Args, added(Line, 2)),
     
-    NewBody = [{match, Line, 
-                {var, Line, 'Result'},
-                {call, Line, 
-                 {atom, Line, OrgFuncName}, 
+    NewBody = [{match, added(Line, 1), 
+                {var, added(Line, 1), 'Result'},
+                {call, added(Line, 1), 
+                 {atom, added(Line, 1), OrgFuncName}, 
                  ClauseArgs}},
-               {call, Line, 
-                {remote, Line, 
-                 {atom, Line, AMod}, 
-                 {atom, Line, AFunc}},
+               {call, added(Line, 2), 
+                {remote, added(Line, 2), 
+                 {atom, added(Line, 2), AMod}, 
+                 {atom, added(Line, 2), AFunc}},
                 [AnnotationArgs,
-                 {atom, Line, get(module_name)},
-                 {atom, Line, Name},
-                 {var, Line, 'Result'}
+                 {atom, added(Line, 2), get(module_name)},
+                 {atom, added(Line, 2), Name},
+                 {var, added(Line, 2), 'Result'}
                 ]}],
-    NewClause = {clause, Line, ClauseArgs, [], NewBody},
-    OrgFunc = {function, Line, OrgFuncName, Arity, Clauses},
+    NewClause = {clause, added(Line, 0), ClauseArgs, [], NewBody},
+    OrgFunc = {function, added(Line, 0), OrgFuncName, Arity, Clauses},
 
-    transform_function_after({function, Line, Name, Arity, [NewClause]},
+    transform_function_after({function, added(Line, 0), Name, Arity, [NewClause]},
                              Rest, [OrgFunc | Added]);
 transform_function_after(F, [], Added) ->
     {F, Added}.
@@ -187,7 +189,8 @@ unique_function_name(OrgFun, AFun) ->
                                                           OrgFun, AFun]))).
 
 -spec(prepare_annotation_args/2 :: (list(), integer()) -> term()).
-prepare_annotation_args(Annotations, Line) ->
+prepare_annotation_args(Annotations, Line0) ->
+    Line = line_no(Line0),
     NewLines = [$\n || _ <- lists:seq(1, Line-1)],
     SAnnotations = NewLines ++ lists:flatten(io_lib:format("~w.", [Annotations])),
     {ok, Tokens, _} = erl_scan:string(SAnnotations),
@@ -201,3 +204,15 @@ generate_args(Arity, Prefix, Line) ->
                                       [{var, Line, 
                                         list_to_atom(Prefix ++ integer_to_list(N))} | Acc]
                               end, [], lists:seq(1, Arity))).
+
+-spec(added/2 :: (integer() | {added, integer()}, integer()) -> {added, integer()}).
+added({added, Line}, Offset) ->
+    {added, Line + Offset};
+added(Line, Offset) ->
+    {added, Line + Offset}.
+
+-spec(line_no/1 :: (integer() | {added, integer()}) -> integer()).
+line_no({added, Line}) ->
+    Line;
+line_no(Line) ->
+    Line.

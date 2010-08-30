@@ -41,12 +41,13 @@ correct_line_numbers([{atom, {added, Offset}, Name} | Rest], Current, Acc) ->
 correct_line_numbers([{tuple, {added, Offset}, Content} | Rest], Current, Acc) ->
     NewContent = correct_line_numbers(Content, Current, []),
     correct_line_numbers(Rest, Current, [{tuple, Current + Offset, NewContent} | Acc]);
-correct_line_numbers([{'case', {added, Offset}, Clauses} | Rest], Current, Acc) ->
+correct_line_numbers([{'case', {added, Offset}, Expr, Clauses} | Rest], Current, Acc) ->
+    [NewExpr] = correct_line_numbers([Expr], Current, []),
     NewClauses = correct_line_numbers(Clauses, Current, []),
-    correct_line_numbers(Rest, Current, [{'case', Current + Offset, NewClauses} | Acc]);
+    correct_line_numbers(Rest, Current, [{'case', Current + Offset, NewExpr, NewClauses} | Acc]);
 correct_line_numbers([{cons, {added, Offset}, Head, Tail} | Rest], Current, Acc) ->
     [NewHead] = correct_line_numbers([Head], Current, []),
-    NewTail = correct_line_numbers(Tail, Current, []),
+    [NewTail] = correct_line_numbers([Tail], Current, []),
     correct_line_numbers(Rest, Current, [{cons, Current + Offset, NewHead, NewTail} | Acc]);
 correct_line_numbers([{nil, {added, Offset}} | Rest], Current, Acc) ->
     correct_line_numbers(Rest, Current, [{nil, Current + Offset} | Acc]);
